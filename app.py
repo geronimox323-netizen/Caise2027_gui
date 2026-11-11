@@ -24,20 +24,14 @@ def kpi_label(slug, meta):
     return f"{meta['dataset_label']} — {meta['kpi_label']}"
 
 
-def pick_prefix(slug, meta, prefixes, examples):
-    """Execution + prefix pickers (state scoped per KPI). Returns the row of prefixes.csv of the selected prefix."""
+def pick_prefix(slug, meta, prefixes):
+    """Execution + prefix pickers (state scoped per case study). Returns the row of prefixes.csv of the selected prefix."""
     ids = list(prefixes["vp_id"].drop_duplicates())
-    ex = examples.get(slug)
     okey, dkey = f"exec_{slug}", f"depth_{slug}"
-    c1, c2, c3 = st.columns([3, 3, 2])
-    with c3:
-        st.write("")
-        if ex is not None and ex["vp_id"] in ids:
-            if st.button("Load the paper example", help=f"{ex['vp_id']} after {ex['depth']} events", key=f"ex_{slug}"):
-                st.session_state[okey] = ex["vp_id"]; st.session_state[dkey] = int(ex["depth"])
+    c1, c2 = st.columns([1, 1])
     with c1:
         if st.session_state.get(okey) not in ids:
-            st.session_state[okey] = ex["vp_id"] if ex is not None and ex["vp_id"] in ids else ids[0]
+            st.session_state[okey] = ids[0]
         vp_id = st.selectbox(f"{meta['viewpoint_label']} ({len(ids)} test executions" + (f", a {100 * meta['sample_fraction']:.0f}% sample" if "sample_fraction" in meta else "") + ")", ids, key=okey)
     sub = prefixes[prefixes["vp_id"] == vp_id].sort_values("depth")
     depths = [int(d) for d in sub["depth"]]
@@ -225,10 +219,9 @@ def main():
     kpis = D.list_kpis()
     if not kpis:
         st.error("No data found in dashboard/data: run scripts/export_dashboard.py first."); return
-    examples = D.paper_examples()
     with st.sidebar:
         st.title("Explanation explorer")
-        slug = st.selectbox("Log and KPI", [s for s, _ in kpis], format_func=lambda s: kpi_label(s, dict(kpis)[s]))
+        slug = st.selectbox("Log and viewpoint", [s for s, _ in kpis], format_func=lambda s: kpi_label(s, dict(kpis)[s]))
         meta = D.load_meta(slug)
         st.caption(f"Remaining time until *{meta['target_activity'] if meta['target_activity'] != '*' else 'the end of the execution'}* "
                    f"of each {meta['viewpoint_label']}. τ = {meta['tau_h']:g} h.")
@@ -256,7 +249,7 @@ def main():
     prefixes = D.load_prefixes(slug)
     if mode == "agg":
         view_aggregate(slug, meta, top_k, relative, scope); return
-    row, sub = pick_prefix(slug, meta, prefixes, examples)
+    row, sub = pick_prefix(slug, meta, prefixes)
     if mode == "loo":
         view_loo(slug, meta, row, sub, top_k, relative, scope)
     else:

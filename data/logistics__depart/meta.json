@@ -1,0 +1,27 @@
+{
+ "dataset": "logistics",
+ "dataset_label": "Logistics",
+ "kpi": "depart",
+ "kpi_label": "Depart",
+ "kpi_description": "Elapsed time from CustomerOrder to Depart (final container)",
+ "target_activity": "Depart",
+ "viewpoint": "Customer Order",
+ "viewpoint_label": "Customer Order",
+ "tau_h": 10.0,
+ "thresholds_h": [
+  5.0,
+  10.0,
+  20.0
+ ],
+ "depth_window": 2,
+ "mae_h": 85.44660436734404,
+ "n_test_prefixes": 19448,
+ "n_test_executions": 267,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 34990,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 28,
+ "n_sampled_prefixes": 1996,
+ "n_test_prefixes_full": 19448
+}

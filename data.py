@@ -61,11 +61,6 @@ def load_executions(dataset):
 
 
 @st.cache_data(show_spinner=False)
-def paper_examples():
-    p = os.path.join(DATA, "paper_examples.json")
-    return json.load(open(p)) if os.path.exists(p) else {}
-
-
 def whiskers(df_top, roles, scope="last", relative=False, min_n=3):
     """±1 std of the role of each explained element over the test prefixes (identity when it occurs in >= min_n
     executions, object type otherwise; arcs by role). Returns (std, n_traces, level) arrays aligned with df_top."""

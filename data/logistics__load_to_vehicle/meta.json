@@ -1,0 +1,27 @@
+{
+ "dataset": "logistics",
+ "dataset_label": "Logistics",
+ "kpi": "load_to_vehicle",
+ "kpi_label": "Load to Vehicle",
+ "kpi_description": "Elapsed time from CustomerOrder to LoadToVehicle",
+ "target_activity": "Load to Vehicle",
+ "viewpoint": "Customer Order",
+ "viewpoint_label": "Customer Order",
+ "tau_h": 10.0,
+ "thresholds_h": [
+  5.0,
+  10.0,
+  20.0
+ ],
+ "depth_window": 2,
+ "mae_h": 92.02251933674621,
+ "n_test_prefixes": 19181,
+ "n_test_executions": 267,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 34548,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 28,
+ "n_sampled_prefixes": 1959,
+ "n_test_prefixes_full": 19181
+}
