@@ -1,0 +1,27 @@
+{
+ "dataset": "github_pm4py",
+ "dataset_label": "GitHub",
+ "kpi": "closed",
+ "kpi_label": "Closed",
+ "kpi_description": "Remaining time until the issue / pull request is closed",
+ "target_activity": "closed",
+ "viewpoint": "case:concept:name",
+ "viewpoint_label": "case:concept:name",
+ "tau_h": 48.0,
+ "thresholds_h": [
+  24.0,
+  48.0,
+  96.0
+ ],
+ "depth_window": 2,
+ "mae_h": 77.32211282328278,
+ "n_test_prefixes": 115,
+ "n_test_executions": 42,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 722,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 6,
+ "n_sampled_prefixes": 23,
+ "n_test_prefixes_full": 115
+}

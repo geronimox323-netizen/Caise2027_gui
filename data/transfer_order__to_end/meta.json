@@ -1,0 +1,27 @@
+{
+ "dataset": "transfer_order",
+ "dataset_label": "Transfer",
+ "kpi": "to_end",
+ "kpi_label": "End",
+ "kpi_description": "Remaining time until the transfer order is completed (last event)",
+ "target_activity": "*",
+ "viewpoint": "NLQNR",
+ "viewpoint_label": "NLQNR",
+ "tau_h": 48.0,
+ "thresholds_h": [
+  24.0,
+  48.0,
+  96.0
+ ],
+ "depth_window": 2,
+ "mae_h": 29.106645692478526,
+ "n_test_prefixes": 88,
+ "n_test_executions": 88,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 4669,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 10,
+ "n_sampled_prefixes": 10,
+ "n_test_prefixes_full": 88
+}

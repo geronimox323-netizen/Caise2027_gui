@@ -1,0 +1,27 @@
+{
+ "dataset": "order_management",
+ "dataset_label": "Order Management",
+ "kpi": "package_delivered",
+ "kpi_label": "Package Delivered",
+ "kpi_description": "Elapsed time from Orders to PackageDelivered (final package)",
+ "target_activity": "package delivered",
+ "viewpoint": "orders",
+ "viewpoint_label": "orders",
+ "tau_h": 48.0,
+ "thresholds_h": [
+  24.0,
+  48.0,
+  96.0
+ ],
+ "depth_window": 2,
+ "mae_h": 370.0865751587518,
+ "n_test_prefixes": 1010,
+ "n_test_executions": 95,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 16257,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 11,
+ "n_sampled_prefixes": 128,
+ "n_test_prefixes_full": 1010
+}

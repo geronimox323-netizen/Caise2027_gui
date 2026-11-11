@@ -1,0 +1,27 @@
+{
+ "dataset": "recruiting",
+ "dataset_label": "Recruiting",
+ "kpi": "rejection",
+ "kpi_label": "Rejection",
+ "kpi_description": "Remaining time until the application is rejected (defined on rejected applications)",
+ "target_activity": "send rejection",
+ "viewpoint": "applications",
+ "viewpoint_label": "applications",
+ "tau_h": 48.0,
+ "thresholds_h": [
+  24.0,
+  48.0,
+  96.0
+ ],
+ "depth_window": 2,
+ "mae_h": 161.95103987834807,
+ "n_test_prefixes": 399,
+ "n_test_executions": 67,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 2658,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 8,
+ "n_sampled_prefixes": 47,
+ "n_test_prefixes_full": 399
+}

@@ -1,0 +1,27 @@
+{
+ "dataset": "github_pm4py",
+ "dataset_label": "GitHub",
+ "kpi": "issue_end",
+ "kpi_label": "End",
+ "kpi_description": "Remaining time until the last event of the issue",
+ "target_activity": "*",
+ "viewpoint": "case:concept:name",
+ "viewpoint_label": "case:concept:name",
+ "tau_h": 48.0,
+ "thresholds_h": [
+  24.0,
+  48.0,
+  96.0
+ ],
+ "depth_window": 2,
+ "mae_h": 72.5089002322776,
+ "n_test_prefixes": 127,
+ "n_test_executions": 44,
+ "k": 8,
+ "top": 20,
+ "n_train_prefixes": 786,
+ "sample_fraction": 0.1,
+ "n_sampled_executions": 6,
+ "n_sampled_prefixes": 17,
+ "n_test_prefixes_full": 127
+}
