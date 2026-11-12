@@ -40,7 +40,8 @@ def load_loo(slug):
 
 @st.cache_data(show_spinner=False)
 def load_roles(slug):
-    return pd.read_csv(os.path.join(DATA, slug, "roles.csv"))
+    r = pd.read_csv(os.path.join(DATA, slug, "roles.csv"))
+    return r[r["scope"] == "all"].drop(columns="scope") if "scope" in r.columns else r
 
 
 @st.cache_data(show_spinner="Loading counterfactuals…")
@@ -61,10 +62,10 @@ def load_executions(dataset):
 
 
 @st.cache_data(show_spinner=False)
-def whiskers(df_top, roles, scope="last", relative=False, min_n=3):
+def whiskers(df_top, roles, relative=False, min_n=3):
     """±1 std of the role of each explained element over the test prefixes (identity when it occurs in >= min_n
     executions, object type otherwise; arcs by role). Returns (std, n_traces, level) arrays aligned with df_top."""
-    r = roles[roles["scope"] == scope]
+    r = roles
     ident = r[r["level"] == "identity"].set_index("key"); typ = r[r["level"] == "type"].set_index("key"); role = r[r["level"] == "role"].set_index("key")
     col = "std_rel" if relative else "std_shift_h"
     stds, ns, lv = [], [], []

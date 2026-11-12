@@ -278,16 +278,16 @@ def legend_handles(spec: dict) -> List[Line2D]:
     statuses = {s for _, s in spec["nodes"].values()}; est = {s for _, _, s in spec["edges"]}
     h = []
     if "query" in statuses:
-        h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["query"], label="only in query"))
+        h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["query"], label="only in the original prefix"))
     if "cf" in statuses:
         h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["cf"], label="only in counterfactual"))
-    h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["both"], label="in both (\"query / counterfactual\")"))
+    h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["both"], label="in both (\"original / counterfactual\")"))
     differ = "vp" in statuses
     h.append(Line2D([], [], marker="o", ls="", ms=12, color=COLORS["both"], markeredgecolor=COLORS["vp"] if differ else "black", markeredgewidth=3,
                     label="viewpoint, attributes differ" if differ else "viewpoint, same attributes"))
     h.append(Line2D([], [], color=COLORS["both"], lw=1.6, label="relation in both"))
     if "query" in est:
-        h.append(Line2D([], [], color=COLORS["query"], lw=2.6, ls=(0, (5, 3)), label="relation only in query"))
+        h.append(Line2D([], [], color=COLORS["query"], lw=2.6, ls=(0, (5, 3)), label="relation only in the original prefix"))
     if "cf" in est:
         h.append(Line2D([], [], color=COLORS["cf"], lw=3.0, label="relation only in counterfactual"))
     return h
