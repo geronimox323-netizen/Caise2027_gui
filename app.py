@@ -24,22 +24,34 @@ def kpi_label(slug, meta):
     return f"{meta['dataset_label']} — {meta['kpi_label']}"
 
 
-def pick_prefix(slug, meta, prefixes):
-    """Execution + prefix pickers (state scoped per case study). Returns the row of prefixes.csv of the selected prefix."""
+def pick_prefix(slug, meta, prefixes, valid=None):
+    """Execution + prefix pickers (state scoped per case study). Returns the row of prefixes.csv of the selected prefix.
+    valid: optional set of prefix_ids that have something to show (counterfactual view); the pickers then default to an
+    execution and to the deepest prefix in that set, and remember the choice of the visitor afterwards."""
     ids = list(prefixes["vp_id"].drop_duplicates())
-    okey, dkey = f"exec_{slug}", f"depth_{slug}"
+    okey, dkey, vkey = f"exec_{slug}", f"depth_{slug}", f"valid_{slug}"
+    if valid is not None and st.session_state.get(vkey) != valid:
+        # new threshold / direction (or first visit of the view): move to a prefix that has a counterfactual
+        st.session_state[vkey] = valid
+        ok = prefixes[prefixes["prefix_id"].isin(valid)]
+        cur = st.session_state.get(okey)
+        if cur not in set(ok["vp_id"]) and len(ok):
+            cur = ok["vp_id"].iloc[0]; st.session_state[okey] = cur
+        d = ok[ok["vp_id"] == cur]["depth"]
+        if len(d):
+            st.session_state[dkey] = int(d.max())
     c1, c2 = st.columns([1, 1])
     with c1:
         if st.session_state.get(okey) not in ids:
             st.session_state[okey] = ids[0]
-        vp_id = st.selectbox(f"{meta['viewpoint_label']} ({len(ids)} test executions" + (f", a {100 * meta['sample_fraction']:.0f}% sample" if "sample_fraction" in meta else "") + ")", ids, key=okey)
+        vp_id = st.selectbox("Execution", ids, key=okey, label_visibility="collapsed")
     sub = prefixes[prefixes["vp_id"] == vp_id].sort_values("depth")
     depths = [int(d) for d in sub["depth"]]
     with c2:
         if st.session_state.get(dkey) not in depths:
             st.session_state[dkey] = depths[-1]
         depth = st.select_slider("Prefix (events observed)", options=depths, key=dkey,
-                                 format_func=lambda d: f"{d} (last before the KPI)" if d == depths[-1] else str(d))
+                                 format_func=str)
     return sub[sub["depth"] == depth].iloc[0], sub
 
 
@@ -48,13 +60,13 @@ def fmt_h(v):
 
 
 # ------------------------------------------------------------------------------------------------------- views
-def view_loo(slug, meta, row, sub, top_k, relative, scope):
+def view_loo(slug, meta, row, sub, top_k, relative):
     loo = D.load_loo(slug); roles = D.load_roles(slug)
     schema, execs = D.load_executions(meta["dataset"])
     el = loo[loo["prefix_id"] == row["prefix_id"]].copy()
     el["abs"] = el["shift_h"].abs(); el = el.sort_values("abs", ascending=False)
     top = el.head(top_k).reset_index(drop=True)
-    stds, ns, lv = D.whiskers(top, roles, scope=scope, relative=relative)
+    stds, ns, lv = D.whiskers(top, roles, relative=relative)
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Predicted remaining time", fmt_h(row["pred_h"]))
@@ -68,14 +80,13 @@ def view_loo(slug, meta, row, sub, top_k, relative, scope):
     labels = [charts.short(l) for l in top["label"]]; kinds = [charts.kind_of(k, key) for k, key in zip(top["kind"], top["key"])]
     st.subheader(f"Top {top_k} elements by leave-one-out shift")
     st.pyplot(charts.loo_bars(labels, kinds, vals.to_numpy(), stds, relative=relative), width='content')
-    scope_txt = "last-event test prefixes" if scope == "last" else "test prefixes"
     st.caption(f"Red: the presence of the element pushes the prediction later; blue: earlier. Whiskers: ±1 std of the shift of the same "
-               f"role (activity, object identity or type, arc type) over all the {scope_txt} in which it occurs"
+               f"role (event, object identity or type, arc type) over all the test prefixes in which it occurs"
                + (f"; shifts in % of the {row['duration_h']:.0f} h the execution lasted until the KPI." if relative else "."))
 
     tbl = top[["kind", "label", "shift_h", "rel_shift"]].copy()
     tbl["rel_shift"] = 100 * tbl["rel_shift"]; tbl["std"] = stds; tbl["n_executions"] = ns; tbl["aggregated_by"] = lv
-    tbl["kind"] = kinds
+    tbl["kind"] = kinds; tbl = tbl.rename(columns={"kind": "type"})
     tbl = tbl.rename(columns={"label": "element", "shift_h": "shift (h)", "rel_shift": "shift (% of duration)",
                               "std": "std of the role (%)" if relative else "std of the role (h)"})
     st.dataframe(tbl.round(2), width="stretch", hide_index=True)
@@ -107,15 +118,14 @@ def view_cf(slug, meta, row, sub, direction, threshold, rank):
     rows = cf[(cf["prefix_id"] == row["prefix_id"]) & (cf["direction"] == direction) & (np.isclose(cf["threshold_h"], threshold))]
     rows = rows[rows["rank"] > 0].sort_values("rank")
     m1, m2, m3 = st.columns(3)
-    m1.metric("Predicted remaining time (query)", fmt_h(row["pred_h"]))
+    m1.metric("Predicted remaining time (original prefix)", fmt_h(row["pred_h"]))
     m2.metric("Events observed", int(row["depth"]))
     m3.metric("Candidates in the training set", int(rows["n_candidates"].iloc[0]) if len(rows) else 0,
               help=f"training prefixes of other executions within ±{meta['depth_window']} events whose prediction is at least {threshold:g} h "
                    f"{'lower' if direction == 'lower' else 'higher'}")
     if not len(rows):
-        st.warning(f"No training prefix at a similar stage is predicted at least {threshold:g} h "
-                   f"{'earlier' if direction == 'lower' else 'later'} than this one: the oracle sees no realistic way to "
-                   f"{'complete the execution earlier' if direction == 'lower' else 'delay it'}. Lower the threshold or flip the direction.")
+        st.info(f"No counterfactual for this prefix: no training prefix at a similar stage is predicted at least {threshold:g} h "
+                f"{'earlier' if direction == 'lower' else 'later'}. Choose another prefix, lower the threshold or flip the direction.")
         return
     best = rows[rows["rank"] == rank].iloc[0] if rank in set(rows["rank"]) else rows.iloc[0]
     st.subheader(f"Counterfactual #{int(best['rank'])}: {meta['viewpoint_label']} {best['cf_vp_id']} after {int(best['cf_depth'])} events, "
@@ -124,8 +134,8 @@ def view_cf(slug, meta, row, sub, direction, threshold, rank):
     c = G.slice_prefix(execs[best["cf_vp_id"]], schema, int(best["cf_depth"]))
     spec = G.build_union(q, c, schema, float(row["pred_h"]), float(best["cf_pred_h"]), f"{meta['dataset_label']}, {meta['kpi_label']}")
     st.pyplot(G.draw_union(spec), width='stretch')
-    st.caption("Union graph of the query prefix and of its counterfactual: grey elements belong to both (labelled \"query / counterfactual\" "
-               "when two objects play the same role), red ones to the query only, green ones to the counterfactual only. "
+    st.caption("Union graph of the original prefix and of its counterfactual: grey elements belong to both (labelled \"original / counterfactual\" "
+               "when two objects play the same role), red ones to the original prefix only, green ones to the counterfactual only. "
                "The ringed node is the viewpoint (orange ring: its attributes differ).")
 
     st.subheader(f"Top {len(rows)} candidates (lowest dissimilarity first)")
@@ -135,31 +145,30 @@ def view_cf(slug, meta, row, sub, direction, threshold, rank):
                           "feat": "d_feat", "type": "d_type", "edge": "d_edge", "struct": "d_struct", "total": "D"})
     st.dataframe(t.round(3), width="stretch", hide_index=True)
 
-    with st.expander("Differences between the query and the counterfactual", expanded=True):
+    with st.expander("Differences between the original prefix and the counterfactual", expanded=True):
         c1, c2 = st.columns([1, 1])
         with c1:
             st.pyplot(charts.dissimilarity_bars(best), width='content')
         with c2:
             names = schema["vp_features"]
-            fd = pd.DataFrame({"feature": names, "query": q.vp_x, "counterfactual": c.vp_x})
-            fd["delta"] = fd["counterfactual"] - fd["query"]
-            fd = fd[(fd["query"] != 0) | (fd["counterfactual"] != 0)]
+            fd = pd.DataFrame({"feature": names, "original prefix": q.vp_x, "counterfactual": c.vp_x})
+            fd["delta"] = fd["counterfactual"] - fd["original prefix"]
+            fd = fd[(fd["original prefix"] != 0) | (fd["counterfactual"] != 0)]
             st.markdown(f"**{meta['viewpoint_label']} node features** (standardized; counts as log(1+n))")
             st.dataframe(fd.round(3), width="stretch", hide_index=True)
         aq, ac = G.activity_counts(q), G.activity_counts(c)
-        ad = pd.DataFrame([{"activity": a, "query": aq.get(a, 0), "counterfactual": ac.get(a, 0), "delta": ac.get(a, 0) - aq.get(a, 0)}
+        ad = pd.DataFrame([{"event": a, "original prefix": aq.get(a, 0), "counterfactual": ac.get(a, 0), "delta": ac.get(a, 0) - aq.get(a, 0)}
                            for a in sorted(set(aq) | set(ac)) if aq.get(a, 0) != ac.get(a, 0)])
         if len(ad):
-            st.markdown("**Events per activity that differ**")
+            st.markdown("**Events that differ**")
             st.dataframe(ad, width="stretch", hide_index=True)
         else:
-            st.caption("The two prefixes contain the same activities with the same multiplicities.")
+            st.caption("The two prefixes contain the same events with the same multiplicities.")
 
 
-def view_aggregate(slug, meta, top_k, relative, scope):
+def view_aggregate(slug, meta, top_k, relative):
     roles = D.load_roles(slug); prefixes = D.load_prefixes(slug); cf = D.load_cf(slug)
     st.subheader("Oracle and explanation quality over the test set")
-    last = prefixes[prefixes["is_last"]]
     c = st.columns(5)
     sampled = "n_sampled_prefixes" in meta
     c[0].metric("Prefixes shown" if sampled else "Test prefixes", f"{len(prefixes)}",
@@ -170,13 +179,13 @@ def view_aggregate(slug, meta, top_k, relative, scope):
     c[2].metric("Mean characterization", f"{prefixes['characterization'].mean():.2f}", help="over all test prefixes")
     c[3].metric("Mean fidelity⁺", fmt_h(prefixes["fidelity_plus_h"].mean()))
     c[4].metric("Mean fidelity⁻", fmt_h(prefixes["fidelity_minus_h"].mean()))
-    st.caption(("Whisker statistics (roles) are computed on the whole test set; the other figures of this page on the sample. " if sampled else "") + f"On the {len(last)} last-event prefixes: characterization {last['characterization'].mean():.2f}, "
-               f"fidelity⁺ {last['fidelity_plus_h'].mean():.1f} h, fidelity⁻ {last['fidelity_minus_h'].mean():.1f} h.")
+    if sampled:
+        st.caption("Whisker statistics (roles) are computed on the whole test set; the other figures of this page on the sample.")
 
     st.subheader("Most influential roles (leave-one-out shift averaged over the prefixes in which the role occurs)")
-    level = st.radio("Aggregate by", ["activity", "object type", "object identity", "arc type"], horizontal=True, key=f"lvl_{slug}")
-    r = roles[roles["scope"] == scope]
-    if level == "activity":
+    level = st.radio("Aggregate by", ["event", "object type", "object identity", "arc type"], horizontal=True, key=f"lvl_{slug}")
+    r = roles
+    if level == "event":
         r = r[(r["level"] == "identity") & r["key"].str.startswith("Events=")]
     elif level == "object type":
         r = r[r["level"] == "type"]
@@ -191,7 +200,7 @@ def view_aggregate(slug, meta, top_k, relative, scope):
         f = 100.0 if relative else 1.0
         st.pyplot(charts.role_bars(r["key"].tolist(), (f * r[col]).to_numpy(), (f * r[scol]).to_numpy(), r["n_traces"].tolist(), relative=relative),
                   width='content')
-        st.caption(f"n = executions in which the role occurs; whiskers = ±1 std over the {'last-event ' if scope == 'last' else ''}test prefixes. "
+        st.caption(f"n = executions in which the role occurs; whiskers = ±1 std over the test prefixes. "
                    "Roles occurring in fewer than 3 executions are not shown.")
         st.dataframe(r[["key", col, scol, "n", "n_traces"]].rename(columns={"key": "role", col: "mean shift", scol: "std", "n": "prefixes", "n_traces": "executions"}).round(3),
                      width="stretch", hide_index=True)
@@ -226,14 +235,10 @@ def main():
         st.caption(f"Remaining time until *{meta['target_activity'] if meta['target_activity'] != '*' else 'the end of the execution'}* "
                    f"of each {meta['viewpoint_label']}. τ = {meta['tau_h']:g} h.")
         mode = st.radio("View", list(MODES), format_func=MODES.get)
-        top_k, relative, scope, direction, threshold, rank = 8, False, "last", "lower", meta["tau_h"], 1
+        top_k, relative, direction, threshold, rank = 8, False, "lower", meta["tau_h"], 1
         if mode in ("loo", "agg"):
             top_k = st.select_slider("Top k", options=[5, 8, 10, 15, 20], value=8)
             relative = st.checkbox("Shifts relative to the execution duration", value=False)
-            scope = st.radio("Whiskers over", ["last-event prefixes", "all test prefixes"], horizontal=True)
-            scope = "last" if scope.startswith("last") else "all"
-            st.caption("Every node (except the viewpoint) and every arc of the prefix is masked in turn; the shift of the prediction "
-                       "measures how much the oracle relies on it. The k nodes and k arcs with the largest shift form the explanation subgraph.")
         else:
             direction = st.radio("Search direction", ["Earlier than predicted", "Later than predicted"])
             direction = "lower" if direction.startswith("Earlier") else "higher"
@@ -248,10 +253,16 @@ def main():
     st.title(kpi_label(slug, meta))
     prefixes = D.load_prefixes(slug)
     if mode == "agg":
-        view_aggregate(slug, meta, top_k, relative, scope); return
-    row, sub = pick_prefix(slug, meta, prefixes)
+        view_aggregate(slug, meta, top_k, relative); return
+    valid = None
+    if mode == "cf":
+        cf = D.load_cf(slug)
+        if cf is not None:
+            ok = cf[(cf["direction"] == direction) & np.isclose(cf["threshold_h"], threshold) & (cf["rank"] > 0)]
+            valid = frozenset(ok["prefix_id"])
+    row, sub = pick_prefix(slug, meta, prefixes, valid)
     if mode == "loo":
-        view_loo(slug, meta, row, sub, top_k, relative, scope)
+        view_loo(slug, meta, row, sub, top_k, relative)
     else:
         view_cf(slug, meta, row, sub, direction, threshold, rank)
 
