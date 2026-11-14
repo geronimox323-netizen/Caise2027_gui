@@ -16,7 +16,7 @@ import data as D
 import graphs as G
 
 st.set_page_config(page_title="Object-centric explanation explorer", layout="wide")
-MODES = {"loo": "Leave-one-out", "cf": "Counterfactual", "agg": "Aggregate (test set)"}
+MODES = {"loo": "Leave-one-out", "cf": "Counterfactual", "agg": "Aggregated Leave-One-Out"}
 
 
 # ------------------------------------------------------------------------------------------------------- helpers
@@ -182,30 +182,26 @@ def view_aggregate(slug, meta, top_k, relative):
     if sampled:
         st.caption("Whisker statistics (roles) are computed on the whole test set; the other figures of this page on the sample.")
 
-    st.subheader("Most influential roles (leave-one-out shift averaged over the prefixes in which the role occurs)")
-    level = st.radio("Aggregate by", ["event", "object type", "object identity", "arc type"], horizontal=True, key=f"lvl_{slug}")
-    r = roles
-    if level == "event":
-        r = r[(r["level"] == "identity") & r["key"].str.startswith("Events=")]
-    elif level == "object type":
-        r = r[r["level"] == "type"]
-    elif level == "object identity":
-        r = r[(r["level"] == "identity") & ~r["key"].str.startswith("Events=")]
-    else:
-        r = r[r["level"] == "role"]
-    r = r[r["n_traces"] >= 3].copy()
+    st.subheader(f"Top {top_k} most influential elements (leave-one-out shift averaged over the test prefixes in which the element occurs)")
+    # one ranking over every kind of element: events (by activity), objects (by identity when seen in >= 3 executions, by type
+    # otherwise) and arcs (by type)
+    ident = roles[(roles["level"] == "identity") & (roles["n_traces"] >= 3)]
+    covered = set(ident[~ident["key"].str.startswith("Events=")]["key"].str.split("=").str[0])
+    typ = roles[(roles["level"] == "type") & ~roles["key"].isin(covered)]
+    arcs = roles[roles["level"] == "role"]
+    r = pd.concat([ident, typ, arcs]); r = r[r["n_traces"] >= 3].copy()
     col, scol = ("mean_rel", "std_rel") if relative else ("mean_shift_h", "std_shift_h")
     r["abs"] = r[col].abs(); r = r.sort_values("abs", ascending=False).head(top_k)
     if len(r):
         f = 100.0 if relative else 1.0
         st.pyplot(charts.role_bars(r["key"].tolist(), (f * r[col]).to_numpy(), (f * r[scol]).to_numpy(), r["n_traces"].tolist(), relative=relative),
                   width='content')
-        st.caption(f"n = executions in which the role occurs; whiskers = ±1 std over the test prefixes. "
-                   "Roles occurring in fewer than 3 executions are not shown.")
-        st.dataframe(r[["key", col, scol, "n", "n_traces"]].rename(columns={"key": "role", col: "mean shift", scol: "std", "n": "prefixes", "n_traces": "executions"}).round(3),
+        st.caption("n = executions in which the element occurs; whiskers = ±1 std over the test prefixes. "
+                   "Elements occurring in fewer than 3 executions are not shown.")
+        st.dataframe(r[["key", col, scol, "n", "n_traces"]].rename(columns={"key": "element", col: "mean shift", scol: "std", "n": "prefixes", "n_traces": "executions"}).round(3),
                      width="stretch", hide_index=True)
     else:
-        st.info("No role of this kind occurs in at least 3 executions.")
+        st.info("No element occurs in at least 3 executions.")
 
     if cf is not None:
         st.subheader("Counterfactual coverage")

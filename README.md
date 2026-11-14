@@ -11,7 +11,7 @@ files in `data/`. It covers **every test prefix** of the nine log / KPI pairs of
 |---|---|
 | **Leave-one-out** | for the selected execution and prefix: the top-k nodes and arcs by leave-one-out shift (red: the element pushes the prediction later, blue: earlier), whiskers = ±1 std of the shift of the same role over the test prefixes, the explanation subgraph highlighted on the prefix graph, fidelity⁺ / fidelity⁻ / characterization, and the prediction along the execution |
 | **Counterfactual** | the closest training prefix (dissimilarity D) whose prediction is at least τ hours lower (or higher), drawn as the union graph of the two prefixes, with the three best candidates, the components of D, the viewpoint attributes and the activities that differ. Two directions and three thresholds (τ/2, τ, 2τ) were precomputed |
-| **Aggregate** | oracle MAE and mean fidelity over the test set, the most influential roles (activities, object types / identities, arc types) with their mean ± std shift, and the coverage of the counterfactual search |
+| **Aggregated Leave-One-Out** | oracle MAE and mean fidelity over the test set, the k most influential elements of any kind (events, objects, arcs) by mean ± std leave-one-out shift, and the coverage of the counterfactual search |
 
 ## Run
 
