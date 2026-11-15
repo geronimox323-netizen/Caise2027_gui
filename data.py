@@ -33,6 +33,28 @@ def load_prefixes(slug):
     return df.sort_values(["vp_id", "depth"]).reset_index(drop=True)
 
 
+METRICS = ["fidelity_plus_h", "fidelity_minus_h", "characterization", "node_sparsity", "edge_sparsity", "pred_without_h", "pred_only_h"]
+
+
+def metrics_for_k(df, k):
+    """Fidelity metrics of the explanation subgraph with top-k nodes and top-k arcs: the export stores one set of columns per k
+    (<metric>_k<k>, scripts/refit_fidelity_k.py); copy the requested k into the unsuffixed columns. Data without per-k
+    columns (older exports) keep the single precomputed k."""
+    if f"characterization_k{k}" not in df.columns:
+        return df
+    df = df.copy()
+    for m in METRICS:
+        if f"{m}_k{k}" in df.columns:
+            df[m] = df[f"{m}_k{k}"]
+    return df
+
+
+def ks_available(df, default):
+    """The k values with precomputed fidelity metrics in df (at least the default one)."""
+    ks = sorted(int(c.rsplit("_k", 1)[1]) for c in df.columns if c.startswith("characterization_k"))
+    return ks or [default]
+
+
 @st.cache_data(show_spinner="Loading explanations…")
 def load_loo(slug):
     return pd.read_csv(os.path.join(DATA, slug, "loo_top.csv.gz"))

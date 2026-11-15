@@ -9,9 +9,9 @@ files in `data/`. It covers **every test prefix** of the nine log / KPI pairs of
 
 | view | what it shows |
 |---|---|
-| **Leave-one-out** | for the selected execution and prefix: the top-k nodes and arcs by leave-one-out shift (red: the element pushes the prediction later, blue: earlier), whiskers = ±1 std of the shift of the same role over the test prefixes, the explanation subgraph highlighted on the prefix graph, fidelity⁺ / fidelity⁻ / characterization, and the prediction along the execution |
-| **Counterfactual** | the closest training prefix (dissimilarity D) whose prediction is at least τ hours lower (or higher), drawn as the union graph of the two prefixes, with the three best candidates, the components of D, the viewpoint attributes and the activities that differ. Two directions and three thresholds (τ/2, τ, 2τ) were precomputed |
-| **Aggregated Leave-One-Out** | oracle MAE and mean fidelity over the test set, the k most influential elements of any kind (events, objects, arcs) by mean ± std leave-one-out shift, and the coverage of the counterfactual search |
+| **Leave-one-out** | for the selected execution and prefix: bar chart of the top-k nodes and arcs by leave-one-out shift (red: the element pushes the prediction later, blue: earlier; whiskers = ±1 std of the shift of the same role over the test prefixes), the explanation subgraph (top-k nodes and top-k arcs) highlighted on the prefix graph, and the prediction along the execution |
+| **Counterfactual** | for the selected execution and prefix, direction and threshold: the union graph of the original prefix and of its counterfactual (grey: in both, red: original prefix only, green: counterfactual only) and the decomposition of the dissimilarity D |
+| **Aggregated Leave-One-Out** | bar chart of the k most influential elements of any kind (events, objects, arcs), by mean leave-one-out shift over the test prefixes in which they occur, with ±1 std whiskers |
 
 ## Run
 
