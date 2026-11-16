@@ -17,6 +17,9 @@ import graphs as G
 
 st.set_page_config(page_title="Object-centric explanation explorer", layout="wide")
 MODES = {"loo": "Leave-one-out", "cf": "Counterfactual", "agg": "Aggregated Leave-One-Out"}
+# per-k fidelity helpers live in data.py; fall back to the single precomputed k if an older data.py is deployed next to this file
+ks_available = getattr(D, "ks_available", lambda df, default: [default])
+metrics_for_k = getattr(D, "metrics_for_k", lambda df, k: df)
 
 
 # ------------------------------------------------------------------------------------------------------- helpers
@@ -134,7 +137,7 @@ def main():
         mode = st.radio("View", list(MODES), format_func=MODES.get)
         top_k, relative, direction, threshold, rank = meta["k"], False, "lower", meta["tau_h"], 1
         if mode in ("loo", "agg"):
-            top_k = st.select_slider("Top k", options=D.ks_available(prefixes, meta["k"]), value=meta["k"],
+            top_k = st.select_slider("Top k", options=ks_available(prefixes, meta["k"]), value=meta["k"],
                                      help="elements listed and size of the explanation subgraph (top-k nodes and top-k arcs) on which fidelity and characterization are computed")
             relative = st.checkbox("Shifts relative to the execution duration", value=False)
         else:
@@ -156,7 +159,7 @@ def main():
             valid = frozenset(ok["prefix_id"])
     row, sub = pick_prefix(slug, meta, prefixes, valid)
     if mode == "loo":
-        row = D.metrics_for_k(row.to_frame().T, top_k).iloc[0]; sub = D.metrics_for_k(sub, top_k)
+        row = metrics_for_k(row.to_frame().T, top_k).iloc[0]; sub = metrics_for_k(sub, top_k)
         view_loo(slug, meta, row, sub, top_k, relative)
     else:
         view_cf(slug, meta, row, sub, direction, threshold, rank)
